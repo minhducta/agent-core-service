@@ -5,16 +5,15 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/minhducta/agent-core-service/internal/domain"
-	"github.com/minhducta/agent-core-service/internal/usecase"
 )
 
 // HeartbeatHandler handles /v1/heartbeat routes
 type HeartbeatHandler struct {
-	heartbeatUC *usecase.HeartbeatUsecase
+	heartbeatUC HeartbeatUsecase
 }
 
 // NewHeartbeatHandler creates a new HeartbeatHandler
-func NewHeartbeatHandler(heartbeatUC *usecase.HeartbeatUsecase) *HeartbeatHandler {
+func NewHeartbeatHandler(heartbeatUC HeartbeatUsecase) *HeartbeatHandler {
 	return &HeartbeatHandler{heartbeatUC: heartbeatUC}
 }
 

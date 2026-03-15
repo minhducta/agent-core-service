@@ -5,16 +5,15 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/minhducta/agent-core-service/internal/domain"
-	"github.com/minhducta/agent-core-service/internal/usecase"
 )
 
 // TodoHandler handles /v1/todos routes
 type TodoHandler struct {
-	todoUC *usecase.TodoUsecase
+	todoUC TodoUsecase
 }
 
 // NewTodoHandler creates a new TodoHandler
-func NewTodoHandler(todoUC *usecase.TodoUsecase) *TodoHandler {
+func NewTodoHandler(todoUC TodoUsecase) *TodoHandler {
 	return &TodoHandler{todoUC: todoUC}
 }
 

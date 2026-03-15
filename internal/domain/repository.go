@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/jmoiron/sqlx"
 )
 
 // BotRepository defines data access for the bots table
@@ -12,7 +11,6 @@ type BotRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*Bot, error)
 	GetByAPIKeyHash(ctx context.Context, hash string) (*Bot, error)
 	UpdateLastSeen(ctx context.Context, id uuid.UUID) error
-	ExecTx(ctx context.Context, fn func(*sqlx.Tx) error) error
 }
 
 // BotMemoryRepository defines data access for the bot_memories table

@@ -74,3 +74,11 @@ func (b *Bot) ToResponse() BotResponse {
 		UpdatedAt:  b.UpdatedAt,
 	}
 }
+
+// BootstrapResponse is the full context dump for GET /v1/me/bootstrap
+type BootstrapResponse struct {
+	Bot      BotResponse `json:"bot"`
+	Memories []BotMemory `json:"memories"`
+	Skills   []BotSkill  `json:"skills"`
+	Policies []BotPolicy `json:"policies"`
+}

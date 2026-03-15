@@ -30,7 +30,7 @@ func (r *HeartbeatRepository) Create(ctx context.Context, hb *domain.Heartbeat) 
 	if _, err := r.db.ExecContext(ctx, query,
 		hb.ID, hb.BotID, hb.Status, hb.Metadata, hb.CreatedAt,
 	); err != nil {
-		return fmt.Errorf("failed to create heartbeat: %w", err)
+		return fmt.Errorf("repo.Create: %w", err)
 	}
 
 	return nil
@@ -58,7 +58,7 @@ func (r *HeartbeatRepository) GetStatusByBotID(ctx context.Context, botID uuid.U
 
 	var r2 row
 	if err := r.db.GetContext(ctx, &r2, query, botID); err != nil {
-		return nil, fmt.Errorf("failed to get heartbeat status: %w", err)
+		return nil, fmt.Errorf("repo.GetStatusByBotID: %w", err)
 	}
 
 	lastSeen := r2.LastSeenAt

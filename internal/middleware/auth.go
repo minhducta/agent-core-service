@@ -1,17 +1,20 @@
 package middleware
 
 import (
-	"crypto/sha256"
-	"fmt"
+	"context"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/minhducta/agent-core-service/internal/domain"
-	"github.com/minhducta/agent-core-service/internal/usecase"
 )
 
+// BotResolver resolves a bot identity from a raw API key
+type BotResolver interface {
+	ResolveByAPIKey(ctx context.Context, rawKey string) (*domain.Bot, error)
+}
+
 // APIKeyAuth returns a middleware that validates Bearer API keys per-bot
-func APIKeyAuth(botUC *usecase.BotUsecase) fiber.Handler {
+func APIKeyAuth(resolver BotResolver) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		authHeader := c.Get("Authorization")
 		if authHeader == "" {
@@ -34,7 +37,7 @@ func APIKeyAuth(botUC *usecase.BotUsecase) fiber.Handler {
 		}
 
 		rawKey := parts[1]
-		bot, err := botUC.ResolveByAPIKey(c.Context(), rawKey)
+		bot, err := resolver.ResolveByAPIKey(c.Context(), rawKey)
 		if err != nil {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"error": fiber.Map{
@@ -48,10 +51,4 @@ func APIKeyAuth(botUC *usecase.BotUsecase) fiber.Handler {
 		c.Locals("botId", bot.ID.String())
 		return c.Next()
 	}
-}
-
-// hashAPIKey computes SHA-256 hex of the raw key (shared with usecase)
-func hashAPIKey(rawKey string) string {
-	h := sha256.Sum256([]byte(rawKey))
-	return fmt.Sprintf("%x", h)
 }

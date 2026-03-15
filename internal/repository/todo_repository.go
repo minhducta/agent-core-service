@@ -26,7 +26,7 @@ func (r *TodoRepository) ListByBotID(ctx context.Context, botID uuid.UUID, page,
 	var total int
 	countQuery := `SELECT COUNT(*) FROM todos WHERE assigned_to = $1 OR assigned_by = $1`
 	if err := r.db.GetContext(ctx, &total, countQuery, botID); err != nil {
-		return nil, 0, fmt.Errorf("failed to count todos: %w", err)
+		return nil, 0, fmt.Errorf("repo.ListByBotID: count: %w", err)
 	}
 
 	offset := (page - 1) * limit
@@ -40,7 +40,7 @@ func (r *TodoRepository) ListByBotID(ctx context.Context, botID uuid.UUID, page,
 
 	var todos []domain.Todo
 	if err := r.db.SelectContext(ctx, &todos, query, botID, limit, offset); err != nil {
-		return nil, 0, fmt.Errorf("failed to list todos: %w", err)
+		return nil, 0, fmt.Errorf("repo.ListByBotID: %w", err)
 	}
 
 	return todos, total, nil
@@ -59,7 +59,7 @@ func (r *TodoRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Tod
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to get todo by id: %w", err)
+		return nil, fmt.Errorf("repo.GetByID: %w", err)
 	}
 
 	return &todo, nil
@@ -76,7 +76,7 @@ func (r *TodoRepository) Update(ctx context.Context, todo *domain.Todo) error {
 	if _, err := r.db.ExecContext(ctx, query,
 		todo.ID, todo.Status, todo.Priority, todo.Result, todo.DueDate, todo.UpdatedAt,
 	); err != nil {
-		return fmt.Errorf("failed to update todo: %w", err)
+		return fmt.Errorf("repo.Update: %w", err)
 	}
 
 	return nil
@@ -102,7 +102,7 @@ func (r *TodoChecklistRepository) ListByTodoID(ctx context.Context, todoID uuid.
 
 	var items []domain.TodoChecklistItem
 	if err := r.db.SelectContext(ctx, &items, query, todoID); err != nil {
-		return nil, fmt.Errorf("failed to list checklist items: %w", err)
+		return nil, fmt.Errorf("repo.ListByTodoID: %w", err)
 	}
 
 	return items, nil
@@ -120,7 +120,7 @@ func (r *TodoChecklistRepository) GetByID(ctx context.Context, itemID uuid.UUID)
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to get checklist item: %w", err)
+		return nil, fmt.Errorf("repo.GetByID: %w", err)
 	}
 
 	return &item, nil
@@ -135,7 +135,7 @@ func (r *TodoChecklistRepository) Update(ctx context.Context, item *domain.TodoC
 
 	item.UpdatedAt = time.Now()
 	if _, err := r.db.ExecContext(ctx, query, item.ID, item.Content, item.IsChecked, item.UpdatedAt); err != nil {
-		return fmt.Errorf("failed to update checklist item: %w", err)
+		return fmt.Errorf("repo.Update: %w", err)
 	}
 
 	return nil

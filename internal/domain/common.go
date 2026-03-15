@@ -7,3 +7,6 @@ type PaginationMeta struct {
 	Total      int `json:"total"`
 	TotalPages int `json:"totalPages"`
 }
+
+// RefLinks represents navigational hypermedia links
+type RefLinks map[string]string

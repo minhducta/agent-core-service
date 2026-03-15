@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"time"
 
@@ -33,7 +32,7 @@ func (r *BotMemoryRepository) ListByBotID(ctx context.Context, botID uuid.UUID) 
 
 	var memories []domain.BotMemory
 	if err := r.db.SelectContext(ctx, &memories, query, botID); err != nil {
-		return nil, fmt.Errorf("failed to list bot memories: %w", err)
+		return nil, fmt.Errorf("repo.ListByBotID: %w", err)
 	}
 
 	return memories, nil
@@ -54,7 +53,7 @@ func (r *BotMemoryRepository) Create(ctx context.Context, memory *domain.BotMemo
 		pq.Array(memory.Tags), memory.Importance, memory.ExpiresAt,
 		memory.CreatedAt, memory.UpdatedAt,
 	); err != nil {
-		return fmt.Errorf("failed to create bot memory: %w", err)
+		return fmt.Errorf("repo.Create: %w", err)
 	}
 
 	return nil
@@ -66,15 +65,15 @@ func (r *BotMemoryRepository) Delete(ctx context.Context, id uuid.UUID, botID uu
 
 	result, err := r.db.ExecContext(ctx, query, id, botID)
 	if err != nil {
-		return fmt.Errorf("failed to delete bot memory: %w", err)
+		return fmt.Errorf("repo.Delete: %w", err)
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("failed to check rows affected: %w", err)
+		return fmt.Errorf("repo.Delete: rows affected: %w", err)
 	}
 	if rows == 0 {
-		return sql.ErrNoRows
+		return domain.ErrMemoryNotFound
 	}
 
 	return nil

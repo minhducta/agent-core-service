@@ -18,3 +18,13 @@ func parseBotID(c *fiber.Ctx) (uuid.UUID, error) {
 func parsePathUUID(c *fiber.Ctx, key string) (uuid.UUID, error) {
 	return uuid.Parse(c.Params(key))
 }
+
+// errResponse builds a standard error response body
+func errResponse(code, message string) fiber.Map {
+	return fiber.Map{
+		"error": fiber.Map{
+			"code":    code,
+			"message": message,
+		},
+	}
+}

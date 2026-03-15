@@ -5,16 +5,15 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/minhducta/agent-core-service/internal/domain"
-	"github.com/minhducta/agent-core-service/internal/usecase"
 )
 
 // BotHandler handles /v1/me routes
 type BotHandler struct {
-	botUC *usecase.BotUsecase
+	botUC BotUsecase
 }
 
 // NewBotHandler creates a new BotHandler
-func NewBotHandler(botUC *usecase.BotUsecase) *BotHandler {
+func NewBotHandler(botUC BotUsecase) *BotHandler {
 	return &BotHandler{botUC: botUC}
 }
 
@@ -75,12 +74,3 @@ func (h *BotHandler) GetBootstrap(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"data": resp})
 }
 
-// errResponse builds a standard error response body
-func errResponse(code, message string) fiber.Map {
-	return fiber.Map{
-		"error": fiber.Map{
-			"code":    code,
-			"message": message,
-		},
-	}
-}

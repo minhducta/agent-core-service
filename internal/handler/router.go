@@ -3,7 +3,6 @@ package handler
 import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/minhducta/agent-core-service/internal/middleware"
-	"github.com/minhducta/agent-core-service/internal/usecase"
 )
 
 // Router holds all handlers and registers routes
@@ -15,7 +14,7 @@ type Router struct {
 	policyHandler    *PolicyHandler
 	todoHandler      *TodoHandler
 	heartbeatHandler *HeartbeatHandler
-	botUC            *usecase.BotUsecase
+	botResolver      middleware.BotResolver
 }
 
 // NewRouter creates a new Router
@@ -27,7 +26,7 @@ func NewRouter(
 	policyHandler *PolicyHandler,
 	todoHandler *TodoHandler,
 	heartbeatHandler *HeartbeatHandler,
-	botUC *usecase.BotUsecase,
+	botResolver middleware.BotResolver,
 ) *Router {
 	return &Router{
 		healthHandler:    healthHandler,
@@ -37,7 +36,7 @@ func NewRouter(
 		policyHandler:    policyHandler,
 		todoHandler:      todoHandler,
 		heartbeatHandler: heartbeatHandler,
-		botUC:            botUC,
+		botResolver:      botResolver,
 	}
 }
 
@@ -48,7 +47,7 @@ func (r *Router) Setup(app *fiber.App) {
 	app.Get("/ready", r.healthHandler.Ready)
 
 	// All v1 routes require a valid API key
-	v1 := app.Group("/v1", middleware.APIKeyAuth(r.botUC))
+	v1 := app.Group("/v1", middleware.APIKeyAuth(r.botResolver))
 
 	// Bot identity routes
 	me := v1.Group("/me")

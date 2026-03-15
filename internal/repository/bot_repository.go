@@ -34,7 +34,7 @@ func (r *BotRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Bot,
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to get bot by id: %w", err)
+		return nil, fmt.Errorf("repo.GetByID: %w", err)
 	}
 
 	return &bot, nil
@@ -52,7 +52,7 @@ func (r *BotRepository) GetByAPIKeyHash(ctx context.Context, hash string) (*doma
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to get bot by api_key_hash: %w", err)
+		return nil, fmt.Errorf("repo.GetByAPIKeyHash: %w", err)
 	}
 
 	return &bot, nil
@@ -63,7 +63,7 @@ func (r *BotRepository) UpdateLastSeen(ctx context.Context, id uuid.UUID) error 
 	query := `UPDATE bots SET last_seen_at = $2, updated_at = $2 WHERE id = $1`
 	now := time.Now()
 	if _, err := r.db.ExecContext(ctx, query, id, now); err != nil {
-		return fmt.Errorf("failed to update last_seen_at: %w", err)
+		return fmt.Errorf("repo.UpdateLastSeen: %w", err)
 	}
 	return nil
 }
@@ -72,12 +72,12 @@ func (r *BotRepository) UpdateLastSeen(ctx context.Context, id uuid.UUID) error 
 func (r *BotRepository) ExecTx(ctx context.Context, fn func(*sqlx.Tx) error) error {
 	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
+		return fmt.Errorf("repo.ExecTx: begin: %w", err)
 	}
 
 	if err := fn(tx); err != nil {
 		if rbErr := tx.Rollback(); rbErr != nil {
-			return fmt.Errorf("tx err: %v, rb err: %v", err, rbErr)
+			return fmt.Errorf("repo.ExecTx: tx err: %v, rollback err: %w", err, rbErr)
 		}
 		return err
 	}

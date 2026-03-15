@@ -39,40 +39,4 @@ type CreateMemoryRequest struct {
 	ExpiresAt  *time.Time `json:"expiresAt,omitempty"`
 }
 
-// BotSkill represents a skill/tool available to a bot
-type BotSkill struct {
-	ID          uuid.UUID `db:"id"          json:"id"`
-	BotID       uuid.UUID `db:"bot_id"      json:"botId"`
-	Name        string    `db:"name"        json:"name"`
-	Description string    `db:"description" json:"description"`
-	UsageGuide  string    `db:"usage_guide" json:"usageGuide"`
-	CreatedAt   time.Time `db:"created_at"  json:"createdAt"`
-	UpdatedAt   time.Time `db:"updated_at"  json:"updatedAt"`
-}
 
-// PolicyEffect represents the effect of a policy rule
-type PolicyEffect string
-
-const (
-	PolicyEffectAllow PolicyEffect = "ALLOW"
-	PolicyEffectDeny  PolicyEffect = "DENY"
-)
-
-// BotPolicy represents a permission rule for a bot
-type BotPolicy struct {
-	ID         uuid.UUID    `db:"id"         json:"id"`
-	BotID      uuid.UUID    `db:"bot_id"     json:"botId"`
-	Action     string       `db:"action"     json:"action"`
-	Effect     PolicyEffect `db:"effect"     json:"effect"`
-	Conditions []byte       `db:"conditions" json:"conditions,omitempty"`
-	CreatedAt  time.Time    `db:"created_at" json:"createdAt"`
-	UpdatedAt  time.Time    `db:"updated_at" json:"updatedAt"`
-}
-
-// BootstrapResponse is the full context dump for GET /v1/me/bootstrap
-type BootstrapResponse struct {
-	Bot      BotResponse  `json:"bot"`
-	Memories []BotMemory  `json:"memories"`
-	Skills   []BotSkill   `json:"skills"`
-	Policies []BotPolicy  `json:"policies"`
-}

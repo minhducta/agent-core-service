@@ -29,7 +29,7 @@ func (r *BotSkillRepository) ListByBotID(ctx context.Context, botID uuid.UUID) (
 
 	var skills []domain.BotSkill
 	if err := r.db.SelectContext(ctx, &skills, query, botID); err != nil {
-		return nil, fmt.Errorf("failed to list bot skills: %w", err)
+		return nil, fmt.Errorf("repo.ListByBotID: %w", err)
 	}
 
 	return skills, nil
@@ -55,7 +55,7 @@ func (r *BotPolicyRepository) ListByBotID(ctx context.Context, botID uuid.UUID) 
 
 	var policies []domain.BotPolicy
 	if err := r.db.SelectContext(ctx, &policies, query, botID); err != nil {
-		return nil, fmt.Errorf("failed to list bot policies: %w", err)
+		return nil, fmt.Errorf("repo.ListByBotID: %w", err)
 	}
 
 	return policies, nil
