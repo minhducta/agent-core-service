@@ -1,0 +1,89 @@
+openapi: 3.0.3
+info:
+  title: Agent Core Service API
+  version: 1.0.0
+  description: Management and control plane for AI Agents (Identities, Skills, Memories, Todos, Policies).
+servers:
+  - url: http://localhost:3000
+    description: Local dev server
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: http
+      scheme: bearer
+paths:
+  /v1/heartbeat:
+    post:
+      summary: Agent heartbeat ping
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [online, degraded, busy]
+                current_task:
+                  type: string
+                metrics:
+                  type: object
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  server_time:
+                    type: string
+                    format: date-time
+                  next_ping_in_seconds:
+                    type: integer
+                  pending_commands:
+                    type: array
+                    items:
+                      type: object
+                  cache_invalidations:
+                    type: array
+                    items:
+                      type: string
+  /v1/me/bootstrap:
+    get:
+      summary: Fetch complete context for agent bootstrap
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: A full dump of Identity, Skills, Policies, and pending Todos.
+  /v1/me/memories:
+    post:
+      summary: Save a memory
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '201':
+          description: Created
+  /v1/todos/{id}:
+    patch:
+      summary: Update a todo
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Updated
+  /v1/health:
+    get:
+      summary: Health check endpoint
+      responses:
+        '200':
+          description: Service health metrics.
