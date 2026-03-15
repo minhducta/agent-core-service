@@ -50,10 +50,10 @@ func (r *HeartbeatRepository) GetStatusByBotID(ctx context.Context, botID uuid.U
 		LIMIT 1`
 
 	type row struct {
-		BotID      uuid.UUID            `db:"bot_id"`
+		BotID      uuid.UUID              `db:"bot_id"`
 		Status     domain.HeartbeatStatus `db:"status"`
-		LastSeenAt time.Time            `db:"last_seen_at"`
-		TotalCount int                  `db:"total_count"`
+		LastSeenAt time.Time              `db:"last_seen_at"`
+		TotalCount int                    `db:"total_count"`
 	}
 
 	var r2 row

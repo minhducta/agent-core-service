@@ -38,5 +38,3 @@ type CreateMemoryRequest struct {
 	Importance int        `json:"importance"`
 	ExpiresAt  *time.Time `json:"expiresAt,omitempty"`
 }
-
-
