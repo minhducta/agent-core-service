@@ -1,0 +1,59 @@
+server:
+  port: 8002
+  host: "0.0.0.0"
+  readTimeout: 10s
+  writeTimeout: 10s
+  prefork: false
+
+database:
+  host: localhost
+  port: 5432
+  user: postgres
+  password: postgres
+  dbname: agent_core_db
+  sslmode: disable
+  maxOpenConns: 25
+  maxIdleConns: 5
+  connMaxLifetime: 5m
+
+redis:
+  host: localhost
+  port: 6379
+  password: ""
+  db: 0
+  poolSize: 10
+  minIdleConns: 3
+  maxRetries: 3
+  dialTimeout: 5s
+  readTimeout: 3s
+  writeTimeout: 3s
+
+cache:
+  botTTL: 300s
+  memoryTTL: 600s
+  sessionTTL: 1800s
+
+kafka:
+  brokers:
+    - "localhost:9092"
+  topic: "agent-events"
+  groupID: "agent-core-service"
+  clientID: "agent-core-service"
+
+logger:
+  level: "info"
+  encoding: "json"
+  outputPaths:
+    - "stdout"
+    - "logs/app.log"
+  errorOutputPaths:
+    - "stderr"
+    - "logs/error.log"
+
+pagination:
+  defaultLimit: 20
+  maxLimit: 100
+
+migration:
+  enabled: true
+  path: "migrations"

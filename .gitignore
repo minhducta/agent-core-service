@@ -1,0 +1,24 @@
+# Binaries
+/bin/
+*.exe
+*.out
+
+# Config with secrets
+config/config.local.yaml
+.env
+.env.local
+
+# Build
+*.test
+coverage.out
+coverage.html
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+
+# Air hot reload
+tmp/
