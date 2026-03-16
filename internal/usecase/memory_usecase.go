@@ -60,15 +60,21 @@ func (uc *MemoryUsecase) CreateMemory(ctx context.Context, botID uuid.UUID, req 
 		return nil, fmt.Errorf("failed to create memory: %w", err)
 	}
 
-	_ = uc.cache.InvalidateMemories(ctx, botID.String())
+	if uc.cache != nil {
+		_ = uc.cache.InvalidateMemories(ctx, botID.String())
+	}
 
-	_ = uc.producer.Publish(domain.EventMemoryCreated, map[string]interface{}{
-		"botId":    botID,
-		"memoryId": memory.ID,
-		"type":     memory.Type,
-	})
+	if uc.producer != nil {
+		_ = uc.producer.Publish(domain.EventMemoryCreated, map[string]interface{}{
+			"botId":    botID,
+			"memoryId": memory.ID,
+			"type":     memory.Type,
+		})
+	}
 
-	uc.logger.Info("memory created", zap.String("botId", botID.String()), zap.String("memoryId", memory.ID.String()))
+	if uc.logger != nil {
+		uc.logger.Info("memory created", zap.String("botId", botID.String()), zap.String("memoryId", memory.ID.String()))
+	}
 
 	return memory, nil
 }
@@ -79,46 +85,20 @@ func (uc *MemoryUsecase) DeleteMemory(ctx context.Context, botID uuid.UUID, memo
 		return fmt.Errorf("failed to delete memory: %w", err)
 	}
 
-	_ = uc.cache.InvalidateMemories(ctx, botID.String())
+	if uc.cache != nil {
+		_ = uc.cache.InvalidateMemories(ctx, botID.String())
+	}
 
-	_ = uc.producer.Publish(domain.EventMemoryDeleted, map[string]interface{}{
-		"botId":    botID,
-		"memoryId": memoryID,
-	})
+	if uc.producer != nil {
+		_ = uc.producer.Publish(domain.EventMemoryDeleted, map[string]interface{}{
+			"botId":    botID,
+			"memoryId": memoryID,
+		})
+	}
 
-	uc.logger.Info("memory deleted", zap.String("botId", botID.String()), zap.String("memoryId", memoryID.String()))
+	if uc.logger != nil {
+		uc.logger.Info("memory deleted", zap.String("botId", botID.String()), zap.String("memoryId", memoryID.String()))
+	}
 
 	return nil
-}
-
-// SkillUsecase handles bot_skills business logic
-type SkillUsecase struct {
-	skillRepo domain.BotSkillRepository
-	logger    *zap.Logger
-}
-
-// NewSkillUsecase creates a new SkillUsecase
-func NewSkillUsecase(skillRepo domain.BotSkillRepository, logger *zap.Logger) *SkillUsecase {
-	return &SkillUsecase{skillRepo: skillRepo, logger: logger}
-}
-
-// ListSkills returns all skills for the calling bot
-func (uc *SkillUsecase) ListSkills(ctx context.Context, botID uuid.UUID) ([]domain.BotSkill, error) {
-	return uc.skillRepo.ListByBotID(ctx, botID)
-}
-
-// PolicyUsecase handles bot_policies business logic
-type PolicyUsecase struct {
-	policyRepo domain.BotPolicyRepository
-	logger     *zap.Logger
-}
-
-// NewPolicyUsecase creates a new PolicyUsecase
-func NewPolicyUsecase(policyRepo domain.BotPolicyRepository, logger *zap.Logger) *PolicyUsecase {
-	return &PolicyUsecase{policyRepo: policyRepo, logger: logger}
-}
-
-// ListPolicies returns all policies for the calling bot
-func (uc *PolicyUsecase) ListPolicies(ctx context.Context, botID uuid.UUID) ([]domain.BotPolicy, error) {
-	return uc.policyRepo.ListByBotID(ctx, botID)
 }

@@ -90,10 +90,12 @@ func (uc *TodoUsecase) UpdateTodo(ctx context.Context, todoID uuid.UUID, req dom
 		return nil, fmt.Errorf("failed to update todo: %w", err)
 	}
 
-	_ = uc.producer.Publish(domain.EventTodoUpdated, map[string]interface{}{
-		"todoId": todoID,
-		"status": todo.Status,
-	})
+	if uc.producer != nil {
+		_ = uc.producer.Publish(domain.EventTodoUpdated, map[string]interface{}{
+			"todoId": todoID,
+			"status": todo.Status,
+		})
+	}
 
 	return todo, nil
 }

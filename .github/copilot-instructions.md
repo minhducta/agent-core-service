@@ -2,20 +2,18 @@
 
 ## Project Overview
 
-`agent-core-service` is a **Go microservice** (port `8002`) — the **Agent Control Plane** for the OpenClaw multi-agent bot platform. It manages bot state, identity, memory, skills, policies, todos, and heartbeat mechanisms.
+`agent-core-service` is a **Go microservice** (port `8002`) — the core backend for managing AI bot identities, memories, skills, policies, todos, and heartbeat monitoring. It provides a REST API that bots authenticate against using API keys.
 
 - **Language:** Go 1.26
 - **Module:** `github.com/minhducta/agent-core-service`
-- **Architecture:** Clean Architecture (Domain → Usecase → Repository → Handler)
+- **Architecture:** Clean Architecture (Domain → Usecase → Repository/Handler)
 - **HTTP Framework:** [Fiber v2](https://github.com/gofiber/fiber) (`github.com/gofiber/fiber/v2`)
-- **Database:** PostgreSQL 17 via `sqlx` + `lib/pq`
+- **Database:** PostgreSQL via `sqlx` + `lib/pq`
 - **Cache:** Redis via `go-redis/v9`
 - **Message Broker:** Apache Kafka via `IBM/sarama`
 - **Config:** `spf13/viper` reading `config/config.yaml`
 - **Logging:** `go.uber.org/zap` (structured JSON logs)
-- **Migrations:** `golang-migrate/migrate`
-- **UUID:** `google/uuid`
-- **ID generation:** UUID v4/v7 via `google/uuid`
+- **ID generation:** `google/uuid`
 
 ---
 
@@ -23,30 +21,32 @@
 
 ```
 cmd/api/main.go          # Entrypoint — wires all dependencies (DI by hand)
-config/config.yaml       # Application configuration (server, db, redis, kafka, logger)
+config/config.yaml       # Application configuration (server, db, redis, cache, kafka, logger, pagination, migration)
 internal/
   domain/                # Core layer — entities, interfaces, request/response types, errors, events
   handler/               # Delivery layer — Fiber HTTP handlers + router registration
-  middleware/            # Fiber middlewares (CORS, logger, recovery, auth API key)
+  middleware/            # Fiber middlewares (CORS, logger, recovery, API key auth)
   mocks/                 # testify/mock implementations of domain interfaces
   repository/            # Data layer — PostgreSQL implementations of domain interfaces
   usecase/               # Business logic layer — orchestrates repos + cache + kafka
 migrations/              # SQL migration files (golang-migrate compatible, up/down)
 pkg/
-  cache/                 # Redis cache client + typed helpers
+  cache/                 # Redis cache client + typed helpers (bots, API keys, memories)
   config/                # Config loader (viper) + typed structs
   database/              # PostgreSQL connection pool (sqlx wrapper)
   kafka/                 # Kafka sync producer wrapper
-  logger/                # Zap logger wrapper
+  logger/                # Zap logger wrapper + request logger middleware
   migration/             # golang-migrate runner
 Dockerfile               # Multi-stage build (golang:1.26-alpine → alpine:3.19)
-docker-compose.yml       # Local dev stack (app + postgres:17 + redis:7 + zookeeper + kafka)
+docker-compose.yml       # Local dev stack (app + postgres + redis + zookeeper + kafka)
 Makefile                 # All developer commands
 ```
 
 ---
 
 ## Clean Architecture Layers
+
+The dependency flow is strictly **inward** — outer layers depend on inner ones, never the reverse.
 
 ```mermaid
 flowchart LR
@@ -73,98 +73,204 @@ flowchart LR
 
 ---
 
-## Domains
-
-| Domain | Table | Description |
-|---|---|---|
-| Bot | `bots` | Core identity: name, role, vibe, emoji, avatar_url, api_key_hash, last_seen_at, status |
-| Memory | `bot_memories` | Long-term context: type, content, tags, importance, expires_at |
-| Skill | `bot_skills` | Tools & capabilities: name, description, usage_guide |
-| Policy | `bot_policies` | Permissions: action, effect (ALLOW/DENY), conditions (jsonb) |
-| Todo | `todos` | Tasks: title, description, status, priority, result, due_date, dependency_id |
-| TodoChecklistItem | `todo_checklist_items` | Checklist: content, is_checked, order_index |
-| Heartbeat | `heartbeats` | Audit log: bot_id, status, metadata (jsonb) |
-
----
-
 ## API Routes
 
-### Public Routes (no auth)
-| Method | Path | Description |
-|---|---|---|
-| GET | `/health` | Liveness probe |
-| GET | `/ready` | Readiness probe |
+### Public Routes (no auth required)
+| Method | Path | Handler | Description |
+|---|---|---|---|
+| GET | `/health` | `HealthHandler.HealthCheck` | Liveness probe |
+| GET | `/ready` | `HealthHandler.Ready` | Readiness probe |
 
 ### Protected Routes (API Key required)
-| Method | Path | Description |
-|---|---|---|
-| GET | `/v1/me` | Bot profile + ref_links |
-| GET | `/v1/me/identity` | Bot identity details |
-| GET | `/v1/me/bootstrap` | Full context dump for startup cache |
-| GET | `/v1/me/memories` | List bot memories |
-| POST | `/v1/me/memories` | Create memory |
-| DELETE | `/v1/me/memories/:id` | Delete memory |
-| GET | `/v1/me/skills` | List skills |
-| GET | `/v1/me/policies` | List policies |
-| GET | `/v1/todos` | List assigned todos |
-| PATCH | `/v1/todos/:id` | Update todo status/result |
-| GET | `/v1/todos/:id/checklist` | Get checklist items |
-| PATCH | `/v1/todos/:id/checklist/:item_id` | Check/uncheck item |
-| POST | `/v1/heartbeat` | Bot ping (returns pending_commands + cache_invalidations) |
-| GET | `/v1/heartbeat/status` | All bots status overview |
+| Method | Path | Handler | Description |
+|---|---|---|---|
+| GET | `/v1/me` | `BotHandler.GetProfile` | Bot profile + ref_links |
+| GET | `/v1/me/identity` | `BotHandler.GetIdentity` | Minimal bot identity |
+| GET | `/v1/me/bootstrap` | `BotHandler.GetBootstrap` | Full context dump |
+| GET | `/v1/me/memories` | `MemoryHandler.ListMemories` | List bot memories |
+| POST | `/v1/me/memories` | `MemoryHandler.CreateMemory` | Create a memory |
+| DELETE | `/v1/me/memories/:id` | `MemoryHandler.DeleteMemory` | Delete a memory |
+| GET | `/v1/me/skills` | `SkillHandler.ListSkills` | List bot skills |
+| GET | `/v1/me/policies` | `PolicyHandler.ListPolicies` | List bot policies |
+| GET | `/v1/todos` | `TodoHandler.ListTodos` | List todos (paginated) |
+| PATCH | `/v1/todos/:id` | `TodoHandler.UpdateTodo` | Update a todo |
+| GET | `/v1/todos/:id/checklist` | `TodoHandler.GetChecklist` | Get checklist items |
+| PATCH | `/v1/todos/:id/checklist/:item_id` | `TodoHandler.UpdateChecklistItem` | Update checklist item |
+| POST | `/v1/heartbeat` | `HeartbeatHandler.RecordHeartbeat` | Record heartbeat |
+| GET | `/v1/heartbeat/status` | `HeartbeatHandler.GetHeartbeatStatus` | Get heartbeat status |
 
 ---
 
-## Authentication
+## Makefile Commands
 
-- Each bot has a unique API Key (static Bearer Token) assigned at creation
-- Middleware extracts `Bearer <token>` → SHA-256 hash → lookup `bots` table → set `botID` in `fiber.Locals`
-- All `/v1/*` endpoints require valid API Key
-- Multi-tenancy: bot can only access its own data
+| Command | What it does |
+|---|---|
+| `make build` | Compiles binary to `./bin/agent-core-service` with `-ldflags="-s -w"` |
+| `make run` | Builds then runs with `config/config.yaml` |
+| `make dev` | Hot reload via [air](https://github.com/air-verse/air) |
+| `make test` | `go test ./... -v -cover` |
+| `make test-coverage` | Tests with coverage report |
+| `make tidy` | `go mod tidy` |
+| `make deps` | `go mod download` |
+| `make docker-build` | Builds Docker image `agent-core-service:latest` |
+| `make docker-up` | Starts all services via `docker compose up -d` |
+| `make docker-down` | Stops all services |
+| `make docker-logs` | Tails app container logs |
+| `make docker-reset` | Wipes volumes and restarts everything fresh |
+
+> Always run `make deps` or `go mod tidy` after changing `go.mod`.
 
 ---
 
-## Heartbeat Flow
+## Dockerfile — Multi-stage Build
 
-```
-Bot startup:
-  GET /v1/me/bootstrap → load full context into local in-memory cache
+1. **Builder** (`golang:1.26-alpine`): Downloads deps, then builds a statically-linked binary (`CGO_ENABLED=0 GOOS=linux -ldflags="-s -w"`).
+2. **Runner** (`alpine:3.19`): Copies only the binary + `config/config.yaml` + `migrations/`. Exposes port `8002`.
 
-Every 60s:
-  POST /v1/heartbeat → { status, current_task, metrics }
-  ← { pending_commands, cache_invalidations, next_ping_in_seconds }
+---
 
-On cache_invalidations:
-  Bot reloads specified domains (skills, policies, etc.)
+## Adding or Modifying an API Endpoint
 
-On write-back:
-  PATCH /v1/todos/:id → { status: "completed", result: "..." }
-  POST /v1/me/memories → { type, content, importance }
-```
+When adding a new endpoint, touch files in this order:
+
+1. **`internal/domain/`** — Add/update entity structs, request/response types, enums, and the repository interface method.
+2. **`internal/repository/`** — Implement the new repository method (raw SQL via `sqlx`).
+3. **`migrations/`** — Add a new `NNN_description.up.sql` / `.down.sql` pair if schema changes are needed.
+4. **`internal/usecase/`** — Implement business logic; inject repo + cache + logger + kafka producer.
+5. **`internal/handler/`** — Add the handler method; register the route in `router.go`.
+6. **`internal/mocks/`** — Update mock implementations if repository interfaces changed.
+7. **`*_test.go`** — Add corresponding unit tests.
+
+---
+
+## Recommended Libraries (already in use)
+
+| Purpose | Library |
+|---|---|
+| HTTP server | `github.com/gofiber/fiber/v2` |
+| SQL client | `github.com/jmoiron/sqlx` + `github.com/lib/pq` |
+| Redis | `github.com/redis/go-redis/v9` |
+| Kafka | `github.com/IBM/sarama` |
+| UUID | `github.com/google/uuid` |
+| Config | `github.com/spf13/viper` |
+| Logging | `go.uber.org/zap` |
+
+For new needs, prefer libraries already in `go.mod`. Only add new dependencies when strictly necessary; run `go mod tidy` afterwards.
 
 ---
 
 ## Error Handling Convention
 
-- Error codes defined in `internal/domain/error.go`
-- Response format: `{"error": {"code": "...", "message": "..."}}`
-- Never expose raw DB errors to HTTP response
+- Error codes are defined as constants in `internal/domain/error.go` (e.g., `ErrCodeValidation`, `ErrCodeNotFound`, `ErrCodeUnauthorized`, `ErrCodeForbidden`, `ErrCodeInternal`).
+- Handlers return structured JSON: `{"error": {"code": "...", "message": "..."}}`.
+- Usecases return Go errors; handlers map them to HTTP status codes.
+- Never expose raw database errors to the HTTP response.
+
+---
 
 ## Key Conventions
 
-- UUIDs for all primary keys (`google/uuid`)
-- `botID` stored in `fiber.Locals` by auth middleware after API Key validation
-- Cache keys: `agent:<entity>:<id>` pattern
-- Kafka events published for key state changes (bot status, todo completed, memory created)
-- Dependency injection done manually in `cmd/api/main.go` — no DI framework
-- All SQL queries use parameterised statements
-- API Key stored as SHA-256 hash — never plaintext
+- UUIDs are used for all primary keys.
+- Bots authenticate via **API Key** (SHA-256 hash stored in DB). The raw key is sent as `Bearer <key>` in the `Authorization` header.
+- The `botId` is stored in `fiber.Locals` by the auth middleware after API key validation.
+- Cache keys follow the pattern `agent:<entity>:<identifier>` (e.g., `agent:bot:<uuid>`).
+- Kafka events are published for key actions: bot seen, memory created/deleted, todo updated/completed, heartbeat received.
+- Dependency injection is done **manually** in `cmd/api/main.go` — no DI framework.
+- Configuration is loaded once at startup via `pkg/config/config.go`.
+- All database queries must use parameterised statements (no string interpolation).
 
-## Adding a New Endpoint
+---
 
-1. `internal/domain/` — Add entity, DTOs, repository interface method
-2. `internal/repository/` — Implement SQL query
-3. `migrations/` — Add `NNN_description.up.sql` / `.down.sql` if schema changes
-4. `internal/usecase/` — Business logic
-5. `internal/handler/` — HTTP handler + register route in `router.go`
-6. `*_test.go` — Unit tests
+## Go Development Best Practices
+
+Follow idiomatic Go practices based on [Effective Go](https://go.dev/doc/effective_go) and [Go Code Review Comments](https://go.dev/wiki/CodeReviewComments).
+
+### Code Style
+
+- Write simple, clear, and idiomatic Go code
+- Favor clarity and simplicity over cleverness
+- Keep the happy path left-aligned (minimize indentation)
+- Return early to reduce nesting
+- Make the zero value useful
+- Write self-documenting code with clear, descriptive names
+- Use `gofmt` and `goimports` to format code
+- Avoid emoji in code and comments
+
+### Naming Conventions
+
+- Use mixedCaps (camelCase) rather than underscores
+- Keep names short but descriptive
+- Exported names start with a capital letter
+- Avoid stuttering (e.g., avoid `http.HTTPServer`, prefer `http.Server`)
+- Package names: lowercase, single-word, no underscores
+
+### Package Declaration Rules (CRITICAL)
+
+- **NEVER duplicate `package` declarations** — each Go file must have exactly ONE `package` line
+- When editing an existing `.go` file, **PRESERVE** the existing `package` declaration
+- When creating a new `.go` file, check what package name other files in the directory use
+
+### Error Handling
+
+- Check errors immediately after the function call
+- Don't ignore errors using `_` unless documented why
+- Wrap errors with context using `fmt.Errorf` with `%w` verb
+- Use `errors.Is` and `errors.As` for error checking
+- Keep error messages lowercase and don't end with punctuation
+
+### Interfaces
+
+- Accept interfaces, return concrete types
+- Keep interfaces small (1-3 methods is ideal)
+- Define interfaces close to where they're used
+- Name interfaces with -er suffix when possible (e.g., `Reader`, `Writer`)
+
+### Concurrency
+
+- Always know how a goroutine will exit
+- Use `sync.WaitGroup` or channels to wait for goroutines
+- Use channels to communicate between goroutines
+- Use `sync.Mutex` for protecting shared state
+- Keep critical sections small
+
+### Testing
+
+- Use table-driven tests for multiple test cases
+- Name tests descriptively using `Test_functionName_scenario`
+- Use subtests with `t.Run` for better organization
+- Mark helper functions with `t.Helper()`
+- Clean up resources using `t.Cleanup()`
+
+### Security
+
+- Validate all external input
+- Use parameterised statements for SQL queries
+- Use crypto/rand for random number generation
+- Use TLS for network communication
+
+---
+
+## Unit Testing Guidelines
+
+### General Principles
+
+- **Always test new code** — whenever new functions, methods, or handlers are generated, create corresponding unit tests immediately.
+- **High coverage** — aim for > 80%. Cover happy paths, edge cases, and error states.
+- **Table-driven tests** — all tests MUST use the Go table-driven testing pattern (slice of anonymous structs with `t.Run`).
+- **Assertions** — use `github.com/stretchr/testify/assert` and `github.com/stretchr/testify/require` instead of raw `if err != nil`.
+
+### Mocking Strategy
+
+| Dependency | Library |
+|---|---|
+| Domain interfaces (repos) | `github.com/stretchr/testify/mock` |
+| SQL Database | `github.com/DATA-DOG/go-sqlmock` |
+| Redis | `github.com/go-redis/redismock/v9` |
+| Fiber handlers | `app.Test(httptest.NewRequest(...))` |
+
+### Layer-Specific Rules
+
+- **Repository tests**: use `go-sqlmock`; never connect to a real database.
+- **Usecase tests**: mock repos via `testify/mock`; pass `nil` for cache and Kafka producer; use a real logger.
+- **Handler tests**: create `fiber.New()` app, register the route, inject mocked usecase, test via `app.Test(req, -1)`.
+- **Domain tests**: test pure helper methods directly; no mocks needed.

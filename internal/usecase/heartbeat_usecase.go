@@ -60,16 +60,22 @@ func (uc *HeartbeatUsecase) RecordHeartbeat(ctx context.Context, botID uuid.UUID
 	go func() {
 		bgCtx := context.Background()
 		if err := uc.botRepo.UpdateLastSeen(bgCtx, botID); err != nil {
-			uc.logger.Warn("failed to update last_seen_at", zap.Error(err))
+			if uc.logger != nil {
+				uc.logger.Warn("failed to update last_seen_at", zap.Error(err))
+			}
 		}
 	}()
 
-	_ = uc.producer.Publish(domain.EventHeartbeatReceived, map[string]interface{}{
-		"botId":  botID,
-		"status": req.Status,
-	})
+	if uc.producer != nil {
+		_ = uc.producer.Publish(domain.EventHeartbeatReceived, map[string]interface{}{
+			"botId":  botID,
+			"status": req.Status,
+		})
+	}
 
-	uc.logger.Info("heartbeat recorded", zap.String("botId", botID.String()), zap.String("status", string(req.Status)))
+	if uc.logger != nil {
+		uc.logger.Info("heartbeat recorded", zap.String("botId", botID.String()), zap.String("status", string(req.Status)))
+	}
 
 	return hb, nil
 }

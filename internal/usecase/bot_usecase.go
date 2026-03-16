@@ -50,13 +50,15 @@ func (uc *BotUsecase) ResolveByAPIKey(ctx context.Context, rawKey string) (*doma
 	hash := hashAPIKey(rawKey)
 
 	// Check cache first
-	var cachedBotID string
-	if err := uc.cache.Get(ctx, fmt.Sprintf("agent:apikey:%s", hash), &cachedBotID); err == nil && cachedBotID != "" {
-		id, err := uuid.Parse(cachedBotID)
-		if err == nil {
-			bot, err := uc.botRepo.GetByID(ctx, id)
-			if err == nil && bot != nil && bot.Status == domain.BotStatusActive {
-				return bot, nil
+	if uc.cache != nil {
+		var cachedBotID string
+		if err := uc.cache.Get(ctx, fmt.Sprintf("agent:apikey:%s", hash), &cachedBotID); err == nil && cachedBotID != "" {
+			id, err := uuid.Parse(cachedBotID)
+			if err == nil {
+				bot, err := uc.botRepo.GetByID(ctx, id)
+				if err == nil && bot != nil && bot.Status == domain.BotStatusActive {
+					return bot, nil
+				}
 			}
 		}
 	}
@@ -73,7 +75,9 @@ func (uc *BotUsecase) ResolveByAPIKey(ctx context.Context, rawKey string) (*doma
 	}
 
 	// Cache the mapping
-	_ = uc.cache.SetBotByAPIKeyHash(ctx, hash, bot.ID.String())
+	if uc.cache != nil {
+		_ = uc.cache.SetBotByAPIKeyHash(ctx, hash, bot.ID.String())
+	}
 
 	return bot, nil
 }
@@ -138,19 +142,25 @@ func (uc *BotUsecase) GetBootstrap(ctx context.Context, botID uuid.UUID) (*domai
 
 	memories, err := uc.memoryRepo.ListByBotID(ctx, botID)
 	if err != nil {
-		uc.logger.Warn("failed to load memories for bootstrap", zap.Error(err))
+		if uc.logger != nil {
+			uc.logger.Warn("failed to load memories for bootstrap", zap.Error(err))
+		}
 		memories = []domain.BotMemory{}
 	}
 
 	skills, err := uc.skillRepo.ListByBotID(ctx, botID)
 	if err != nil {
-		uc.logger.Warn("failed to load skills for bootstrap", zap.Error(err))
+		if uc.logger != nil {
+			uc.logger.Warn("failed to load skills for bootstrap", zap.Error(err))
+		}
 		skills = []domain.BotSkill{}
 	}
 
 	policies, err := uc.policyRepo.ListByBotID(ctx, botID)
 	if err != nil {
-		uc.logger.Warn("failed to load policies for bootstrap", zap.Error(err))
+		if uc.logger != nil {
+			uc.logger.Warn("failed to load policies for bootstrap", zap.Error(err))
+		}
 		policies = []domain.BotPolicy{}
 	}
 

@@ -1,24 +1,41 @@
 # Binaries
-/bin/
 *.exe
-*.out
-
-# Config with secrets
-config/config.local.yaml
-.env
-.env.local
-
-# Build
+*.exe~
+*.dll
+*.so
+*.dylib
+/bin/
+/build/
+/agent-core-service
 *.test
+
+# Test & Coverage
 coverage.out
 coverage.html
+
+# Dependencies
+/vendor/
+
+# Hot reload (air) — tmp/ is air's build cache, do NOT commit
+tmp/
+
+# Logs
+logs/
 
 # IDE
 .idea/
 .vscode/
+*.swp
+*.swo
 
 # OS
 .DS_Store
+Thumbs.db
 
-# Air hot reload
-tmp/
+# Environment
+.env
+*.env.local
+*.env.*.local
+
+# Secrets / local overrides
+config/config.local.yaml

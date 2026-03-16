@@ -7,9 +7,14 @@ import (
 	"go.uber.org/zap"
 )
 
-// RequestLogger returns a middleware that logs every request using Zap
+// RequestLogger returns a middleware that logs every request using Zap.
+// It is nil-safe — if the logger is nil, it skips logging and calls c.Next().
 func RequestLogger(logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		if logger == nil {
+			return c.Next()
+		}
+
 		start := time.Now()
 
 		if err := c.Next(); err != nil {

@@ -15,7 +15,7 @@ COPY . .
 # Build binary
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -ldflags="-w -s" \
-    -o /app/agent-core-service \
+    -o /app/go_app \
     ./cmd/api
 
 # Runtime stage
@@ -26,7 +26,7 @@ RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /app
 
 # Copy binary and config
-COPY --from=builder /app/agent-core-service .
+COPY --from=builder /app/go_app .
 COPY --from=builder /app/config ./config
 COPY --from=builder /app/migrations ./migrations
 
@@ -34,4 +34,4 @@ COPY --from=builder /app/migrations ./migrations
 EXPOSE 8002
 
 # Run
-CMD ["./agent-core-service"]
+CMD ["./go_app"]
